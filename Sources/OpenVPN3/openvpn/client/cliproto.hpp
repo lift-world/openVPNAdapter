@@ -178,6 +178,7 @@ namespace openvpn {
       {
 	if (!halt)
 	  {
+	    OPENVPN_LOG("[DEBUG] [CONNECT] Session::start() — initializing transport layer");
 	    Base::update_now();
 
 	    // coarse wakeup range
@@ -229,6 +230,7 @@ namespace openvpn {
       {
 	if (!halt)
 	  {
+	    OPENVPN_LOG("[DEBUG] [CONNECT] Session stopping, terminate_callback=" << call_terminate_callback);
 	    halt = true;
 	    housekeeping_timer.cancel();
 	    push_request_timer.cancel();
@@ -274,7 +276,7 @@ namespace openvpn {
       virtual void transport_recv(BufferAllocated& buf)
       {
 	try {
-	  OPENVPN_LOG_CLIPROTO("Transport RECV " << server_endpoint_render() << ' ' << Base::dump_packet(buf));
+	  OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] Transport RECV size=" << buf.size() << " " << server_endpoint_render());
 
 	  // update current time
 	  Base::update_now();
@@ -282,13 +284,14 @@ namespace openvpn {
 	  // update last packet received
 	  stat().update_last_packet_received(now());
 
-	  // log connecting event (only on first packet received)
-	  if (!first_packet_received_)
-	    {
-	      ClientEvent::Base::Ptr ev = new ClientEvent::Connecting();
-	      cli_events->add_event(std::move(ev));
-	      first_packet_received_ = true;
-	    }
+	      // log connecting event (only on first packet received)
+	      if (!first_packet_received_)
+		{
+		  OPENVPN_LOG("[DEBUG] [CONNECT] First packet received from server");
+		  ClientEvent::Base::Ptr ev = new ClientEvent::Connecting();
+		  cli_events->add_event(std::move(ev));
+		  first_packet_received_ = true;
+		}
 
 	  // get packet type
 	  Base::PacketType pt = Base::packet_type(buf);
@@ -306,7 +309,7 @@ namespace openvpn {
 		  // make packet appear as incoming on tun interface
 		  if (tun)
 		    {
-		      OPENVPN_LOG_CLIPROTO("TUN send, size=" << buf.size());
+		      OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] TUN send, size=" << buf.size());
 		      tun->tun_send(buf);
 		    }
 		}
@@ -354,7 +357,7 @@ namespace openvpn {
       virtual void tun_recv(BufferAllocated& buf)
       {
 	try {
-	  OPENVPN_LOG_CLIPROTO("TUN recv, size=" << buf.size());
+	  OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] TUN recv, size=" << buf.size());
 
 	  // update current time
 	  Base::update_now();
@@ -389,7 +392,7 @@ namespace openvpn {
 		  if (buf.size())
 		  {
 		    // send packet via transport to destination
-		    OPENVPN_LOG_CLIPROTO("Transport SEND " << server_endpoint_render() << ' ' << Base::dump_packet(buf));
+		    OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] Transport SEND size=" << buf.size() << " " << server_endpoint_render());
 		    if (transport->transport_send(buf))
 		      Base::update_last_sent();
 		    else if (halt)
@@ -454,6 +457,7 @@ namespace openvpn {
       virtual void transport_connecting()
       {
 	try {
+	  OPENVPN_LOG("[DEBUG] [CONNECT] Transport connected, starting OpenVPN handshake");
 	  OPENVPN_LOG("Connecting to " << server_endpoint_render());
 	  Base::set_protocol(transport->transport_protocol());
 	  Base::start();
@@ -475,7 +479,7 @@ namespace openvpn {
 	  }
 	if (notify_callback)
 	  {
-	    OPENVPN_LOG("Transport Error: " << err_text);
+	    OPENVPN_LOG("[ERROR] [CONNECT] Transport error: " << err_text);
 	    stop(true);
 	  }
 	else
@@ -491,7 +495,7 @@ namespace openvpn {
 	  }
 	if (notify_callback)
 	  {
-	    OPENVPN_LOG("Proxy Error: " << err_text);
+	    OPENVPN_LOG("[ERROR] [CONNECT] Proxy error: " << err_text);
 	    stop(true);
 	  }
 	else
@@ -534,7 +538,7 @@ namespace openvpn {
       // proto base class calls here for control channel network sends
       virtual void control_net_send(const Buffer& net_buf)
       {
-	OPENVPN_LOG_CLIPROTO("Transport SEND " << server_endpoint_render() << ' ' << Base::dump_packet(net_buf));
+	OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] Control SEND size=" << net_buf.size() << " " << server_endpoint_render());
 	if (transport->transport_send_const(net_buf))
 	  Base::update_last_sent();
       }
@@ -549,12 +553,14 @@ namespace openvpn {
 
 	if (!received_options.complete() && string::starts_with(msg, "PUSH_REPLY,"))
 	  {
+	    OPENVPN_LOG("[DEBUG] [CONNECT] Received PUSH_REPLY from server");
 	    // parse the received options
 	    received_options.add(OptionList::parse_from_csv_static(msg.substr(11), &pushed_options_limit),
 				 pushed_options_filter.get());
 	    if (received_options.complete())
 	      {
 		// show options
+		OPENVPN_LOG("[DEBUG] [CONNECT] Server push options complete");
 		OPENVPN_LOG("OPTIONS:" << std::endl << render_options_sanitized(received_options, Option::RENDER_PASS_FMT|Option::RENDER_NUMBER|Option::RENDER_BRACKET));
 
 		// relay servers are not allowed to establish a tunnel with us
@@ -593,6 +599,7 @@ namespace openvpn {
 		process_inactive(received_options);
 
 		// tell parent that we are connected
+		OPENVPN_LOG("[DEBUG] [CONNECT] VPN tunnel established");
 		if (notify_callback)
 		  notify_callback->client_proto_connected();
 
@@ -628,6 +635,7 @@ namespace openvpn {
 	}
 	else if (string::starts_with(msg, "AUTH_FAILED"))
 	  {
+	    OPENVPN_LOG("[ERROR] [CONNECT] Authentication failed");
 	    std::string reason;
 	    std::string log_reason;
 

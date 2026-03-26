@@ -107,6 +107,9 @@
 - (void)connectUsingPacketFlow:(id<OpenVPNAdapterPacketFlow>)packetFlow {
     NSAssert(self.delegate != nil, @"delegate property shouldn't be nil, set it before trying to establish connection.");
     
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [DEBUG] [CONNECT] connectUsingPacketFlow called");
+#endif
     self.packetFlowBridge.packetFlow = packetFlow;
     
     dispatch_queue_attr_t attributes = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_UTILITY, 0);
@@ -126,6 +129,9 @@
 }
 
 - (void)disconnect {
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [DEBUG] [CONNECT] disconnect called");
+#endif
     self.vpnClient->stop();
 }
 
@@ -409,6 +415,9 @@
 }
 
 - (void)clientErrorName:(NSString *)errorName fatal:(BOOL)fatal message:(NSString *)message {
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [ERROR] %@ (fatal=%d) %@", errorName, fatal, message ?: @"");
+#endif
     OpenVPNAdapterError adapterError = [NSError ovpn_adapterErrorByName:errorName];
     NSString *description = fatal ? @"OpenVPN fatal error occured" : @"OpenVPN error occured";
     
@@ -421,6 +430,9 @@
 }
 
 - (void)clientLogMessage:(NSString *)logMessage {
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] %@", logMessage);
+#endif
     if ([self.delegate respondsToSelector:@selector(openVPNAdapter:handleLogMessage:)]) {
         [self.delegate openVPNAdapter:self handleLogMessage:logMessage];
     }

@@ -18,6 +18,9 @@ using ::IPv4::Addr;
 OpenVPNClient::OpenVPNClient(id<OpenVPNClientDelegate> delegate): ClientAPI::OpenVPNClient() {
     this->delegate = delegate;
     this->config = nullptr;
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [DEBUG] [CONNECT] OpenVPNClient initialized");
+#endif
 }
 
 OpenVPNClient::~OpenVPNClient() {
@@ -25,6 +28,9 @@ OpenVPNClient::~OpenVPNClient() {
 }
 
 ClientAPI::EvalConfig OpenVPNClient::apply_config(const ClientAPI::Config& config) {
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [DEBUG] [CONFIG] Applying configuration");
+#endif
     if (this->config != nullptr) { delete this->config; }
     this->config = new ClientAPI::Config(config);
     
@@ -144,7 +150,14 @@ bool OpenVPNClient::tun_builder_set_block_ipv6(bool block_ipv6) {
 }
 
 int OpenVPNClient::tun_builder_establish() {
-    return [this->delegate establishTunnel] ? [this->delegate socketHandle] : INVALID_SOCKET;
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [DEBUG] [CONNECT] Establishing TUN interface");
+#endif
+    int fd = [this->delegate establishTunnel] ? [this->delegate socketHandle] : INVALID_SOCKET;
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [DEBUG] [CONNECT] TUN establish result: fd=%d", fd);
+#endif
+    return fd;
 }
 
 bool OpenVPNClient::tun_builder_persist() {
@@ -152,6 +165,9 @@ bool OpenVPNClient::tun_builder_persist() {
 }
 
 void OpenVPNClient::tun_builder_teardown(bool disconnect) {
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [DEBUG] [CONNECT] TUN teardown, disconnect=%d", disconnect);
+#endif
     [this->delegate resetSettings];
     [this->delegate resetTun];
 }
@@ -171,6 +187,13 @@ void OpenVPNClient::event(const ClientAPI::Event& ev) {
     NSString *name = [NSString stringWithUTF8String:ev.name.c_str()];
     NSString *message = [NSString stringWithUTF8String:ev.info.c_str()];
     
+#ifdef DEBUG
+    if (ev.error) {
+        NSLog(@"[OpenVPNAdapter] [ERROR] Event: %@ (fatal=%d) %@", name, ev.fatal, message);
+    } else {
+        NSLog(@"[OpenVPNAdapter] [DEBUG] [CONNECT] Event: %@ %@", name, message);
+    }
+#endif
     if (ev.error) {
         [this->delegate clientErrorName:name fatal:ev.fatal message:message.length ? message : nil];
     } else {

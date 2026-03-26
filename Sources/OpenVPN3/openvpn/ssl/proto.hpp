@@ -1705,6 +1705,7 @@ namespace openvpn {
       // Initialize the components of the OpenVPN data channel protocol
       void init_data_channel()
       {
+	OPENVPN_LOG("[DEBUG] [DATA] Initializing data channel crypto");
 	// set up crypto for data channel
 	if (data_channel_key)
 	  {
@@ -2196,19 +2197,23 @@ namespace openvpn {
 	    switch (state)
 	      {
 	      case C_WAIT_RESET_ACK:
+		OPENVPN_LOG("[DEBUG] [TLS] Starting TLS handshake (client mode)");
 		start_handshake();
 		send_auth();
 		set_state(C_WAIT_AUTH);
 		break;
 	      case S_WAIT_RESET_ACK:
+		OPENVPN_LOG("[DEBUG] [TLS] Starting TLS handshake (server mode)");
 		start_handshake();
 		set_state(S_WAIT_AUTH);
 		break;
 	      case C_WAIT_AUTH_ACK:
+		OPENVPN_LOG("[DEBUG] [TLS] TLS handshake complete (client mode)");
 		active();
 		set_state(ACTIVE);
 		break;
 	      case S_WAIT_AUTH_ACK:
+		OPENVPN_LOG("[DEBUG] [TLS] TLS handshake complete (server mode)");
 		active();
 		set_state(ACTIVE);
 		break;
@@ -2282,6 +2287,7 @@ namespace openvpn {
 
       void active()
       {
+	OPENVPN_LOG("[DEBUG] [TLS] SSL session active — " << Base::ssl_handshake_details());
 	if (proto.config->debug_level >= 1)
 	  OPENVPN_LOG_SSL("SSL Handshake: " << Base::ssl_handshake_details());
 	generate_session_keys();
@@ -2300,6 +2306,7 @@ namespace openvpn {
       // the data channel crypto context
       void generate_session_keys()
       {
+	OPENVPN_LOG("[DEBUG] [TLS] Generating data channel session keys");
 	std::unique_ptr<DataChannelKey> dck(new DataChannelKey());
 	tlsprf->generate_key_expansion(dck->key, proto.psid_self, proto.psid_peer);
 	OPENVPN_LOG_PROTO_VERBOSE(proto.debug_prefix() << " KEY " << proto.mode().str() << ' ' << dck->key.render());
@@ -3364,6 +3371,7 @@ namespace openvpn {
     // enter disconnected state
     void disconnect(const Error::Type reason)
     {
+      OPENVPN_LOG("[DEBUG] [CONNECT] Disconnecting, reason=" << Error::name(reason));
       if (primary)
 	primary->invalidate(reason);
       if (secondary)
