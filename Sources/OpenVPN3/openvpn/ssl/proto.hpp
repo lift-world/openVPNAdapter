@@ -1787,7 +1787,7 @@ namespace openvpn {
 				  " transport_encap=" << transport_encap);
 		c.mss_inter = c.mss_parms.mssfix - (crypto_encap + transport_encap);
 	      }
-	    OPENVPN_LOG("[DEBUG] [DATA] Data channel crypto initialized, cipher=" << c.dc.cipher().name());
+	    OPENVPN_LOG("[DEBUG] [DATA] Data channel crypto initialized, cipher=" << CryptoAlgs::name(c.dc.cipher(), "unknown"));
 	  }
       }
 

@@ -34,11 +34,9 @@ ClientAPI::EvalConfig OpenVPNClient::apply_config(const ClientAPI::Config& confi
     if (this->config != nullptr) { delete this->config; }
     this->config = new ClientAPI::Config(config);
 
-#ifdef DEBUG
-    this->config->sslDebugLevel = 4;
-#endif
-
-    return eval_config(*this->config);
+    // Must pass the same `config` reference as before: eval_config + parse_extras
+    // must see the caller's profile; only `this->config` is persisted for later connect().
+    return eval_config(config);
 }
 
 bool OpenVPNClient::tun_builder_new() {
