@@ -276,7 +276,7 @@ namespace openvpn {
       virtual void transport_recv(BufferAllocated& buf)
       {
 	try {
-	  OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] Transport RECV size=" << buf.size() << " " << server_endpoint_render());
+	  OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] (10) Encrypted packet RECV size=" << buf.size() << " " << server_endpoint_render());
 
 	  // update current time
 	  Base::update_now();
@@ -309,7 +309,7 @@ namespace openvpn {
 		  // make packet appear as incoming on tun interface
 		  if (tun)
 		    {
-		      OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] TUN send, size=" << buf.size());
+		      OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] (10) Decrypted → TUN send, size=" << buf.size());
 		      tun->tun_send(buf);
 		    }
 		}
@@ -357,7 +357,7 @@ namespace openvpn {
       virtual void tun_recv(BufferAllocated& buf)
       {
 	try {
-	  OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] TUN recv, size=" << buf.size());
+	  OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] (11) TUN recv → encrypting, size=" << buf.size());
 
 	  // update current time
 	  Base::update_now();
@@ -392,7 +392,7 @@ namespace openvpn {
 		  if (buf.size())
 		  {
 		    // send packet via transport to destination
-		    OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] Transport SEND size=" << buf.size() << " " << server_endpoint_render());
+		    OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] (11) Encrypted packet SEND size=" << buf.size() << " " << server_endpoint_render());
 		    if (transport->transport_send(buf))
 		      Base::update_last_sent();
 		    else if (halt)
@@ -553,14 +553,14 @@ namespace openvpn {
 
 	if (!received_options.complete() && string::starts_with(msg, "PUSH_REPLY,"))
 	  {
-	    OPENVPN_LOG("[DEBUG] [CONNECT] Received PUSH_REPLY from server");
+	    OPENVPN_LOG("[DEBUG] [CONNECT] (8) Server Config Push — received PUSH_REPLY");
 	    // parse the received options
 	    received_options.add(OptionList::parse_from_csv_static(msg.substr(11), &pushed_options_limit),
 				 pushed_options_filter.get());
 	    if (received_options.complete())
 	      {
 		// show options
-		OPENVPN_LOG("[DEBUG] [CONNECT] Server push options complete");
+		OPENVPN_LOG("[DEBUG] [CONNECT] (8) Server push options complete (IP, DNS, routes, etc.)");
 		OPENVPN_LOG("OPTIONS:" << std::endl << render_options_sanitized(received_options, Option::RENDER_PASS_FMT|Option::RENDER_NUMBER|Option::RENDER_BRACKET));
 
 		// relay servers are not allowed to establish a tunnel with us
@@ -599,7 +599,7 @@ namespace openvpn {
 		process_inactive(received_options);
 
 		// tell parent that we are connected
-		OPENVPN_LOG("[DEBUG] [CONNECT] VPN tunnel established");
+		OPENVPN_LOG("[DEBUG] [CONNECT] === Secure VPN Tunnel Ready ===");
 		if (notify_callback)
 		  notify_callback->client_proto_connected();
 
@@ -808,7 +808,7 @@ namespace openvpn {
 		  cli_events->add_event(std::move(ev));
 		  sent_push_request = true;
 		}
-	      OPENVPN_LOG("Sending PUSH_REQUEST to server...");
+	      OPENVPN_LOG("[DEBUG] [TLS] (7) Sending PUSH_REQUEST to server...");
 	      Base::write_control_string(std::string("PUSH_REQUEST"));
 	      Base::flush(true);
 	      set_housekeeping_timer();

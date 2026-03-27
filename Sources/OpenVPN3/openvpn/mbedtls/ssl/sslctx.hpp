@@ -645,7 +645,12 @@ namespace openvpn {
 
       virtual void start_handshake() override
       {
-	mbedtls_ssl_handshake(ssl);
+	OPENVPN_LOG("[DEBUG] [TLS] (2) Sending TLS ClientHello");
+	int ret = mbedtls_ssl_handshake(ssl);
+	if (ret == 0)
+	  OPENVPN_LOG("[DEBUG] [TLS] (5)(6) TLS Finished — handshake completed in single pass");
+	else if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE)
+	  OPENVPN_LOG("[DEBUG] [TLS] (2) ClientHello sent, awaiting ServerHello");
       }
 
       virtual ssize_t write_cleartext_unbuffered(const void *data, const size_t size) override
@@ -725,7 +730,12 @@ namespace openvpn {
 	    const char *ver = mbedtls_ssl_get_version(ssl);
 	    const char *cs = mbedtls_ssl_get_ciphersuite(ssl);
 	    if (ver && cs)
-	      return ver + std::string("/") + cs;
+	      {
+		std::string details = ver + std::string("/") + cs;
+		OPENVPN_LOG("[DEBUG] [TLS] (3)(4) ServerHello + Certificate + KeyExchange processed");
+		OPENVPN_LOG("[DEBUG] [TLS] Negotiated: " << details);
+		return details;
+	      }
 	  }
 	return "";
       }

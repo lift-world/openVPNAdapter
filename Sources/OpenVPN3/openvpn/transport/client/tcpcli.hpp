@@ -278,6 +278,7 @@ namespace openvpn {
       void start_connect_()
       {
 	config->remote_list->get_endpoint(server_endpoint);
+	OPENVPN_LOG("[DEBUG] [CONNECT] (1) TCP/UDP Connect — " << server_endpoint << " via " << server_protocol.str());
 	OPENVPN_LOG("Contacting " << server_endpoint << " via "
 		    << server_protocol.str());
 	parent->transport_wait();
@@ -356,12 +357,14 @@ namespace openvpn {
 		impl->start();
 		if (!parent->transport_is_openvpn_protocol())
 		  impl->set_raw_mode(true);
+		OPENVPN_LOG("[DEBUG] [CONNECT] (1) TCP socket connected to " << server_endpoint);
 		parent->transport_connecting();
 	      }
 	    else
 	      {
 		std::ostringstream os;
 		os << server_protocol.str() << " connect error on '" << server_host << ':' << server_port << "' (" << server_endpoint << "): " << error.message();
+		OPENVPN_LOG("[ERROR] [CONNECT] (1) TCP connect failed: " << os.str());
 		config->stats->error(Error::TCP_CONNECT_ERROR);
 		stop();
 		parent->transport_error(Error::UNDEF, os.str());

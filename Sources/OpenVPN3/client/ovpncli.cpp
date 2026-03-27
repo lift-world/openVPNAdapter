@@ -49,8 +49,8 @@
 // debug settings (production setting in parentheses)
 
 //#define OPENVPN_DUMP_CONFIG          // dump parsed configuration (comment out)
-//#define OPENVPN_DEBUG_CLIPROTO       // shows packets in/out (comment out)
-#define OPENVPN_DEBUG_PROTO   1        // increases low-level protocol verbosity (1)
+#define OPENVPN_DEBUG_CLIPROTO       // shows packets in/out — enabled for debug logging
+#define OPENVPN_DEBUG_PROTO   2        // increases low-level protocol verbosity (2 for data channel logs)
 //#define OPENVPN_DEBUG_PROTO_DUMP     // dump hex of transport-layer packets, requires OPENVPN_DEBUG_CLIPROTO (comment out)
 //#define OPENVPN_DEBUG_VERBOSE_ERRORS // verbosely log Error::Type errors (comment out)
 #define OPENVPN_DEBUG_TUN     2        // debug level for tun object (2)
