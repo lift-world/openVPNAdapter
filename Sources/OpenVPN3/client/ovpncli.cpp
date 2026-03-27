@@ -49,8 +49,13 @@
 // debug settings (production setting in parentheses)
 
 //#define OPENVPN_DUMP_CONFIG          // dump parsed configuration (comment out)
-#define OPENVPN_DEBUG_CLIPROTO       // shows packets in/out — enabled for debug logging
-#define OPENVPN_DEBUG_PROTO   2        // increases low-level protocol verbosity (2 for data channel logs)
+#ifndef NDEBUG
+#define OPENVPN_DEBUG_CLIPROTO       // shows packets in/out (debug builds only)
+#define OPENVPN_DEBUG_PROTO   2        // verbose protocol logging (debug builds only)
+#endif
+#ifndef OPENVPN_DEBUG_PROTO
+#define OPENVPN_DEBUG_PROTO   1        // default for release builds
+#endif
 //#define OPENVPN_DEBUG_PROTO_DUMP     // dump hex of transport-layer packets, requires OPENVPN_DEBUG_CLIPROTO (comment out)
 //#define OPENVPN_DEBUG_VERBOSE_ERRORS // verbosely log Error::Type errors (comment out)
 #define OPENVPN_DEBUG_TUN     2        // debug level for tun object (2)
@@ -809,6 +814,7 @@ namespace openvpn {
 
     OPENVPN_CLIENT_EXPORT Status OpenVPNClient::provide_creds(const ProvideCreds& creds)
     {
+      OPENVPN_LOG("[DEBUG] [CONFIG] Providing credentials, user=" << creds.username);
       Status ret;
       try {
 	ClientCreds::Ptr cc = new ClientCreds();
@@ -824,6 +830,7 @@ namespace openvpn {
 	{
 	  ret.error = true;
 	  ret.message = Unicode::utf8_printable<std::string>(e.what(), 256);
+	  OPENVPN_LOG("[ERROR] [CONFIG] Credentials error: " << ret.message);
 	}
       return ret;
     }
@@ -895,7 +902,7 @@ namespace openvpn {
       Log::Context log_context(this);
 #endif
 
-      OPENVPN_LOG(ClientAPI::OpenVPNClient::platform());
+      OPENVPN_LOG("[DEBUG] [CONNECT] connect() invoked, platform=" << ClientAPI::OpenVPNClient::platform());
 
       return do_connect();
     }
@@ -1107,6 +1114,7 @@ namespace openvpn {
 	if (ec && ec->code_defined())
 	  ret.status = Error::name(ec->code());
       }
+      OPENVPN_LOG("[ERROR] [CONNECT] Exception: " << ret.status << " — " << ret.message);
       return ret;
     }
 

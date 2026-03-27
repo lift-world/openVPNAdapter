@@ -1787,6 +1787,7 @@ namespace openvpn {
 				  " transport_encap=" << transport_encap);
 		c.mss_inter = c.mss_parms.mssfix - (crypto_encap + transport_encap);
 	      }
+	    OPENVPN_LOG("[DEBUG] [DATA] Data channel crypto initialized, cipher=" << c.dc.cipher().name());
 	  }
       }
 
@@ -2199,7 +2200,7 @@ namespace openvpn {
 	      case C_WAIT_RESET_ACK:
 		OPENVPN_LOG("[DEBUG] [TLS] (2) Starting TLS handshake — sending ClientHello");
 		start_handshake();
-		OPENVPN_LOG("[DEBUG] [TLS] (7) Sending AUTH + OPTIONS to server");
+		OPENVPN_LOG("[DEBUG] [AUTH] Sending AUTH + OPTIONS to server");
 		send_auth();
 		set_state(C_WAIT_AUTH);
 		break;
@@ -2224,14 +2225,14 @@ namespace openvpn {
 
       void send_auth()
       {
-	OPENVPN_LOG("[DEBUG] [TLS] (7) Preparing AUTH message with OPTIONS");
+	OPENVPN_LOG("[DEBUG] [AUTH] Preparing AUTH message with OPTIONS");
 	BufferPtr buf = new BufferAllocated();
 	proto.config->frame->prepare(Frame::WRITE_SSL_CLEARTEXT, *buf);
 	buf->write(proto_context_private::auth_prefix, sizeof(proto_context_private::auth_prefix));
 	tlsprf->self_randomize(*proto.config->rng);
 	tlsprf->self_write(*buf);
 	const std::string options = proto.config->options_string();
-	OPENVPN_LOG("[DEBUG] [TLS] (7) OPTIONS string: " << options);
+	OPENVPN_LOG("[DEBUG] [AUTH] OPTIONS string: " << options);
 	write_auth_string(options, *buf);
 	if (!proto.is_server())
 	  {
@@ -3341,7 +3342,10 @@ namespace openvpn {
     // encrypt a data channel packet using primary KeyContext
     void data_encrypt(BufferAllocated& in_out)
     {
-      OPENVPN_LOG_PROTO_VERBOSE("[DEBUG] [DATA] (11) Encrypting data packet, size=" << in_out.size());
+#if OPENVPN_DEBUG_PROTO >= 2
+      if (++data_encrypt_count_ <= 5 || (data_encrypt_count_ % 1000) == 0)
+	OPENVPN_LOG("[DEBUG] [DATA] Encrypting packet #" << data_encrypt_count_ << " size=" << in_out.size());
+#endif
       if (!primary)
 	throw proto_error("data_encrypt: no primary key");
       primary->encrypt(in_out);
@@ -3353,7 +3357,10 @@ namespace openvpn {
     {
       bool ret = false;
 
-      OPENVPN_LOG_PROTO_VERBOSE("[DEBUG] [DATA] (10) Decrypting data packet, size=" << in_out.size());
+#if OPENVPN_DEBUG_PROTO >= 2
+      if (++data_decrypt_count_ <= 5 || (data_decrypt_count_ % 1000) == 0)
+	OPENVPN_LOG("[DEBUG] [DATA] Decrypting packet #" << data_decrypt_count_ << " size=" << in_out.size());
+#endif
 
       select_key_context(type, false).decrypt(in_out);
 
@@ -3848,6 +3855,11 @@ namespace openvpn {
     KeyContext::Ptr primary;
     KeyContext::Ptr secondary;
     bool dc_deferred;
+
+#if OPENVPN_DEBUG_PROTO >= 2
+    unsigned int data_encrypt_count_ = 0;
+    unsigned int data_decrypt_count_ = 0;
+#endif
 
     // END ProtoContext data members
   };

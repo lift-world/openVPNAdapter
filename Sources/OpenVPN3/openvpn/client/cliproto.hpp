@@ -276,7 +276,10 @@ namespace openvpn {
       virtual void transport_recv(BufferAllocated& buf)
       {
 	try {
-	  OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] (10) Encrypted packet RECV size=" << buf.size() << " " << server_endpoint_render());
+#ifdef OPENVPN_DEBUG_CLIPROTO
+	  if (++transport_recv_count_ <= 5 || (transport_recv_count_ % 1000) == 0)
+	    OPENVPN_LOG("[DEBUG] [DATA] Transport RECV #" << transport_recv_count_ << " size=" << buf.size());
+#endif
 
 	  // update current time
 	  Base::update_now();
@@ -309,7 +312,6 @@ namespace openvpn {
 		  // make packet appear as incoming on tun interface
 		  if (tun)
 		    {
-		      OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] (10) Decrypted → TUN send, size=" << buf.size());
 		      tun->tun_send(buf);
 		    }
 		}
@@ -357,7 +359,10 @@ namespace openvpn {
       virtual void tun_recv(BufferAllocated& buf)
       {
 	try {
-	  OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] (11) TUN recv → encrypting, size=" << buf.size());
+#ifdef OPENVPN_DEBUG_CLIPROTO
+	  if (++tun_recv_count_ <= 5 || (tun_recv_count_ % 1000) == 0)
+	    OPENVPN_LOG("[DEBUG] [DATA] TUN RECV #" << tun_recv_count_ << " size=" << buf.size());
+#endif
 
 	  // update current time
 	  Base::update_now();
@@ -391,8 +396,6 @@ namespace openvpn {
 		  Base::data_encrypt(buf);
 		  if (buf.size())
 		  {
-		    // send packet via transport to destination
-		    OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] (11) Encrypted packet SEND size=" << buf.size() << " " << server_endpoint_render());
 		    if (transport->transport_send(buf))
 		      Base::update_last_sent();
 		    else if (halt)
@@ -538,7 +541,7 @@ namespace openvpn {
       // proto base class calls here for control channel network sends
       virtual void control_net_send(const Buffer& net_buf)
       {
-	OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] Control SEND size=" << net_buf.size() << " " << server_endpoint_render());
+	OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] Control channel SEND size=" << net_buf.size());
 	if (transport->transport_send_const(net_buf))
 	  Base::update_last_sent();
       }
@@ -635,7 +638,7 @@ namespace openvpn {
 	}
 	else if (string::starts_with(msg, "AUTH_FAILED"))
 	  {
-	    OPENVPN_LOG("[ERROR] [CONNECT] Authentication failed");
+	    OPENVPN_LOG("[ERROR] [AUTH] Authentication failed");
 	    std::string reason;
 	    std::string log_reason;
 
@@ -695,6 +698,7 @@ namespace openvpn {
 	    // be performed before the server will send the PUSH_REPLY message.
 	    if (!auth_pending)
 	      {
+		OPENVPN_LOG("[DEBUG] [AUTH] Auth pending — out-of-band step required");
 		auth_pending = true;
 		ClientEvent::Base::Ptr ev = new ClientEvent::AuthPending();
 		cli_events->add_event(std::move(ev));
@@ -783,13 +787,13 @@ namespace openvpn {
 	// we never send creds to a relay server
 	if (creds && !Base::conf().relay_mode)
 	  {
-	    OPENVPN_LOG("Creds: " << creds->auth_info());
+	    OPENVPN_LOG("[DEBUG] [AUTH] Sending credentials: " << creds->auth_info());
 	    Base::write_auth_string(creds->get_username(), buf);
 	    Base::write_auth_string(creds->get_password(), buf);
 	  }
 	else
 	  {
-	    OPENVPN_LOG("Creds: None");
+	    OPENVPN_LOG("[DEBUG] [AUTH] No credentials (autologin or relay)");
 	    Base::write_empty_string(buf); // username
 	    Base::write_empty_string(buf); // password
 	  }
@@ -808,7 +812,7 @@ namespace openvpn {
 		  cli_events->add_event(std::move(ev));
 		  sent_push_request = true;
 		}
-	      OPENVPN_LOG("[DEBUG] [TLS] (7) Sending PUSH_REQUEST to server...");
+	      OPENVPN_LOG("[DEBUG] [AUTH] Sending PUSH_REQUEST to server");
 	      Base::write_control_string(std::string("PUSH_REQUEST"));
 	      Base::flush(true);
 	      set_housekeeping_timer();
@@ -1016,7 +1020,7 @@ namespace openvpn {
       {
 	if (notify_callback)
 	  {
-	    OPENVPN_LOG("Client exception in " << method_name << ": " << e.what());
+	    OPENVPN_LOG("[ERROR] Client exception in " << method_name << ": " << e.what());
 	    stop(true);
 	  }
 	else
@@ -1136,6 +1140,11 @@ namespace openvpn {
 
       std::unique_ptr<std::vector<ClientEvent::Base::Ptr>> info_hold;
       AsioTimer info_hold_timer;
+
+#ifdef OPENVPN_DEBUG_CLIPROTO
+      unsigned int transport_recv_count_ = 0;
+      unsigned int tun_recv_count_ = 0;
+#endif
 
 #ifdef OPENVPN_PACKET_LOG
       std::ofstream packet_log;
