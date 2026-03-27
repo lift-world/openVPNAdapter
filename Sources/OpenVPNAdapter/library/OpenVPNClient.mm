@@ -10,8 +10,19 @@
 #import "OpenVPNClient.h"
 
 #import <NetworkExtension/NetworkExtension.h>
+#import <os/log.h>
 
 #include <openvpn/addr/ipv4.hpp>
+
+/// Unified logging for OpenVPN3 core lines; visible in Release and in Packet Tunnel process (unlike DEBUG-only NSLog).
+static os_log_t OpenVPNAdapterCoreLog(void) {
+    static os_log_t log;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        log = os_log_create("org.openvpn.OpenVPNAdapter", "OpenVPN3");
+    });
+    return log;
+}
 
 using ::IPv4::Addr;
 
@@ -205,9 +216,8 @@ void OpenVPNClient::event(const ClientAPI::Event& ev) {
 
 void OpenVPNClient::log(const ClientAPI::LogInfo& log) {
     NSString *logMessage = [NSString stringWithUTF8String:log.text.c_str()];
-#ifdef DEBUG
-    NSLog(@"[OpenVPNAdapter] %@", logMessage);
-#endif
+    // os_log: visible in Debug + Release; use Packet Tunnel scheme / extension process in Xcode, or Console.app subsystem "org.openvpn.OpenVPNAdapter"
+    os_log(OpenVPNAdapterCoreLog(), "%{public}s", logMessage.UTF8String);
     [this->delegate clientLogMessage:logMessage];
 }
 
