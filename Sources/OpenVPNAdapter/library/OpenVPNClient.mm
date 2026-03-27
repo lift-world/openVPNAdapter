@@ -203,6 +203,9 @@ void OpenVPNClient::event(const ClientAPI::Event& ev) {
 
 void OpenVPNClient::log(const ClientAPI::LogInfo& log) {
     NSString *logMessage = [NSString stringWithUTF8String:log.text.c_str()];
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] %@", logMessage);
+#endif
     [this->delegate clientLogMessage:logMessage];
 }
 

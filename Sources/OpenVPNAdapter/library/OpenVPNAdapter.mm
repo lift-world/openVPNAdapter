@@ -72,6 +72,10 @@
     ClientAPI::EvalConfig eval = self.vpnClient->apply_config(configuration.config);
     
     if (eval.error) {
+#ifdef DEBUG
+        NSLog(@"[OpenVPNAdapter] [ERROR] [CONFIG] Configuration failed: %s",
+              eval.message.c_str());
+#endif
         if (error) {
             NSString *message = [NSString stringWithUTF8String:eval.message.c_str()];
             *error = [NSError ovpn_errorObjectForAdapterError:OpenVPNAdapterErrorConfigurationFailure
@@ -83,13 +87,23 @@
         return nil;
     }
     
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [DEBUG] [CONFIG] Configuration applied, profile=%s autologin=%d",
+          eval.profileName.c_str(), eval.autologin);
+#endif
     return [[OpenVPNConfigurationEvaluation alloc] initWithEvalConfig:eval];
 }
 
 - (BOOL)provideCredentials:(OpenVPNCredentials *)credentials error:(NSError * __autoreleasing *)error {
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [DEBUG] [CONFIG] Providing credentials");
+#endif
     ClientAPI::Status status = self.vpnClient->provide_creds(credentials.credentials);
     
     if (status.error) {
+#ifdef DEBUG
+        NSLog(@"[OpenVPNAdapter] [ERROR] [CONFIG] Credentials failed: %s", status.message.c_str());
+#endif
         if (error) {
             NSString *message = [NSString stringWithUTF8String:status.message.c_str()];
             *error = [NSError ovpn_errorObjectForAdapterError:OpenVPNAdapterErrorCredentialsFailure
@@ -115,9 +129,20 @@
     dispatch_queue_attr_t attributes = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, QOS_CLASS_UTILITY, 0);
     dispatch_queue_t connectQueue = dispatch_queue_create("me.ss-abramchuk.openvpn-adapter.connection.", attributes);
     dispatch_async(connectQueue, ^{
+#ifdef DEBUG
+        NSLog(@"[OpenVPNAdapter] [DEBUG] [CONNECT] Connection thread started, initializing process");
+#endif
         OpenVPNClient::init_process();
         
         ClientAPI::Status status = self.vpnClient->connect();
+#ifdef DEBUG
+        if (status.error) {
+            NSLog(@"[OpenVPNAdapter] [ERROR] [CONNECT] connect() failed: %s — %s",
+                  status.status.c_str(), status.message.c_str());
+        } else {
+            NSLog(@"[OpenVPNAdapter] [DEBUG] [CONNECT] connect() returned normally");
+        }
+#endif
         [self handleConnectionStatus:status];
         
         OpenVPNClient::uninit_process();
@@ -340,6 +365,9 @@
 }
 
 - (BOOL)establishTunnel {
+#ifdef DEBUG
+    NSLog(@"[OpenVPNAdapter] [DEBUG] [CONNECT] establishTunnel — configuring network settings");
+#endif
     NEPacketTunnelNetworkSettings *networkSettings = [self.networkSettingsBuilder networkSettings];
     
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
@@ -353,7 +381,12 @@
     [self.delegate openVPNAdapter:self configureTunnelWithNetworkSettings:networkSettings completionHandler:completionHandler];
     
     long timeout = dispatch_semaphore_wait(semaphore, dispatch_time(DISPATCH_TIME_NOW, TUNNEL_CONFIGURATION_TIMEOUT * NSEC_PER_SEC));
-    if (timeout) { return NO; }
+    if (timeout) {
+#ifdef DEBUG
+        NSLog(@"[OpenVPNAdapter] [ERROR] [CONNECT] establishTunnel timed out after %ds", TUNNEL_CONFIGURATION_TIMEOUT);
+#endif
+        return NO;
+    }
     
     if (configurationError) {
         NSDictionary *userInfo = @{
@@ -430,9 +463,6 @@
 }
 
 - (void)clientLogMessage:(NSString *)logMessage {
-#ifdef DEBUG
-    NSLog(@"[OpenVPNAdapter] %@", logMessage);
-#endif
     if ([self.delegate respondsToSelector:@selector(openVPNAdapter:handleLogMessage:)]) {
         [self.delegate openVPNAdapter:self handleLogMessage:logMessage];
     }
