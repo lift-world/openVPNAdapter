@@ -263,6 +263,7 @@ namespace openvpn {
       void start_connect_()
       {
 	config->remote_list->get_endpoint(server_endpoint);
+	// (1) Transport: UDP “connect” binds remote; datagram path same role as TCP for OpenVPN.
 	OPENVPN_LOG("[DEBUG] [CONNECT] (1) TCP/UDP Connect — " << server_endpoint << " via UDP");
 	OPENVPN_LOG("Contacting " << server_endpoint << " via UDP");
 	parent->transport_wait();
@@ -301,6 +302,7 @@ namespace openvpn {
 		impl->gremlin_config(config->gremlin_config);
 #endif
 		impl->start(config->n_parallel);
+		// (1) Ready to read/write OpenVPN packets on UDP.
 		OPENVPN_LOG("[DEBUG] [CONNECT] (1) UDP socket connected to " << server_endpoint);
 		parent->transport_connecting();
 	      }
@@ -308,6 +310,7 @@ namespace openvpn {
 	      {
 		std::ostringstream os;
 		os << "UDP connect error on '" << server_host << ':' << server_port << "' (" << server_endpoint << "): " << error.message();
+		// (1) Same class of failure as TCP — path to server never opened.
 		OPENVPN_LOG("[ERROR] [CONNECT] (1) UDP connect failed: " << os.str());
 		config->stats->error(Error::UDP_CONNECT_ERROR);
 		stop();

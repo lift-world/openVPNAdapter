@@ -1705,6 +1705,7 @@ namespace openvpn {
       // Initialize the components of the OpenVPN data channel protocol
       void init_data_channel()
       {
+	// Builds encrypt/decrypt/compress for tun once keys and options are known.
 	OPENVPN_LOG("[DEBUG] [DATA] (9) Initializing data channel crypto");
 	// set up crypto for data channel
 	if (data_channel_key)
@@ -1787,6 +1788,7 @@ namespace openvpn {
 				  " transport_encap=" << transport_encap);
 		c.mss_inter = c.mss_parms.mssfix - (crypto_encap + transport_encap);
 	      }
+	    // Negotiated data-cipher name for field debugging.
 	    OPENVPN_LOG("[DEBUG] [DATA] Data channel crypto initialized, cipher=" << CryptoAlgs::name(c.dc.cipher(), "unknown"));
 	  }
       }
@@ -2195,6 +2197,7 @@ namespace openvpn {
       {
 	if (state <= LAST_ACK_STATE && !rel_send.n_unacked())
 	  {
+	    // State machine: reset ACK → TLS + AUTH bundle → ACTIVE. Numbers match debug diagram.
 	    switch (state)
 	      {
 	      case C_WAIT_RESET_ACK:
@@ -2225,6 +2228,7 @@ namespace openvpn {
 
       void send_auth()
       {
+	// (7) First app payload on TLS channel: random + options (+ creds on client).
 	OPENVPN_LOG("[DEBUG] [AUTH] Preparing AUTH message with OPTIONS");
 	BufferPtr buf = new BufferAllocated();
 	proto.config->frame->prepare(Frame::WRITE_SSL_CLEARTEXT, *buf);
@@ -2291,6 +2295,7 @@ namespace openvpn {
 
       void active()
       {
+	// (5)(6) TLS done — control messages run inside this channel from here on.
 	OPENVPN_LOG("[DEBUG] [TLS] === TLS Control Channel Established ===");
 	OPENVPN_LOG("[DEBUG] [TLS] SSL session: " << Base::ssl_handshake_details());
 	if (proto.config->debug_level >= 1)
@@ -2311,6 +2316,7 @@ namespace openvpn {
       // the data channel crypto context
       void generate_session_keys()
       {
+	// (9) PRF material for data channel; separate from TLS traffic keys.
 	OPENVPN_LOG("[DEBUG] [TLS] (9) === Data Channel Key Exchange ===");
 	OPENVPN_LOG("[DEBUG] [TLS] (9) Generating data channel session keys via TLS PRF");
 	std::unique_ptr<DataChannelKey> dck(new DataChannelKey());
@@ -3343,6 +3349,7 @@ namespace openvpn {
     void data_encrypt(BufferAllocated& in_out)
     {
 #if OPENVPN_DEBUG_PROTO >= 2
+      // Hot path — keep sampling only when OPENVPN_DEBUG_PROTO >= 2.
       if (++data_encrypt_count_ <= 5 || (data_encrypt_count_ % 1000) == 0)
 	OPENVPN_LOG("[DEBUG] [DATA] Encrypting packet #" << data_encrypt_count_ << " size=" << in_out.size());
 #endif
@@ -3361,6 +3368,7 @@ namespace openvpn {
       if (++data_decrypt_count_ <= 5 || (data_decrypt_count_ % 1000) == 0)
 	OPENVPN_LOG("[DEBUG] [DATA] Decrypting packet #" << data_decrypt_count_ << " size=" << in_out.size());
 #endif
+      // (10) Incoming data channel; control frames never hit this path.
 
       select_key_context(type, false).decrypt(in_out);
 
@@ -3383,6 +3391,7 @@ namespace openvpn {
     // enter disconnected state
     void disconnect(const Error::Type reason)
     {
+      // Invalidates keys — log reason when tracking user-initiated vs protocol teardown.
       OPENVPN_LOG("[DEBUG] [CONNECT] Disconnecting, reason=" << Error::name(reason));
       if (primary)
 	primary->invalidate(reason);

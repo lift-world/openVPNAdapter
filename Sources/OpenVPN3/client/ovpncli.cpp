@@ -790,6 +790,7 @@ namespace openvpn {
     // API client submits the configuration here before calling connect()
     OPENVPN_CLIENT_EXPORT EvalConfig OpenVPNClient::eval_config(const Config& config)
     {
+      // Profile parse only — Log::Context usually absent until connect(); bridge may NSLog earlier.
       OPENVPN_LOG("[DEBUG] [CONFIG] Evaluating client configuration");
       // parse and validate configuration file
       EvalConfig eval;
@@ -957,6 +958,7 @@ namespace openvpn {
 
     OPENVPN_CLIENT_EXPORT void OpenVPNClient::connect_setup(Status& status, bool& session_started)
     {
+      // One-time setup: mbedTLS threshold, ClientOptions, then session->start() hits transport (1).
       OPENVPN_LOG("[DEBUG] [CONNECT] Initializing client connection");
       // set global MbedTLS debug level
 #if defined(USE_MBEDTLS) || defined(USE_MBEDTLS_APPLE_HYBRID)
@@ -1081,7 +1083,7 @@ namespace openvpn {
       // raise an exception if app has expired
       check_app_expired();
 
-      // start VPN
+      // Hands off to cliproto Session::start — async connect begins here.
       OPENVPN_LOG("[DEBUG] [CONNECT] Starting VPN session");
       state->session->start(); // queue reads on socket/tun
       session_started = true;
@@ -1379,6 +1381,7 @@ namespace openvpn {
 
     OPENVPN_CLIENT_EXPORT void OpenVPNClient::on_disconnect()
     {
+      // API-level disconnect — session tear down follows inside state.
       OPENVPN_LOG("[DEBUG] [CONNECT] Client disconnecting");
       state->on_disconnect();
     }

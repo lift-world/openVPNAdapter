@@ -278,9 +278,8 @@ namespace openvpn {
       void start_connect_()
       {
 	config->remote_list->get_endpoint(server_endpoint);
+	// (1) Transport: outbound TCP to remote — nothing OpenVPN-specific until link is up.
 	OPENVPN_LOG("[DEBUG] [CONNECT] (1) TCP/UDP Connect — " << server_endpoint << " via " << server_protocol.str());
-	OPENVPN_LOG("Contacting " << server_endpoint << " via "
-		    << server_protocol.str());
 	parent->transport_wait();
 	socket.open(server_endpoint.protocol());
 
@@ -357,6 +356,7 @@ namespace openvpn {
 		impl->start();
 		if (!parent->transport_is_openvpn_protocol())
 		  impl->set_raw_mode(true);
+		// (1) Socket is up; cliproto will start the OpenVPN state machine next.
 		OPENVPN_LOG("[DEBUG] [CONNECT] (1) TCP socket connected to " << server_endpoint);
 		parent->transport_connecting();
 	      }
@@ -364,6 +364,7 @@ namespace openvpn {
 	      {
 		std::ostringstream os;
 		os << server_protocol.str() << " connect error on '" << server_host << ':' << server_port << "' (" << server_endpoint << "): " << error.message();
+		// (1) Dead end for this attempt — fix routing/DNS/firewall before retrying.
 		OPENVPN_LOG("[ERROR] [CONNECT] (1) TCP connect failed: " << os.str());
 		config->stats->error(Error::TCP_CONNECT_ERROR);
 		stop();

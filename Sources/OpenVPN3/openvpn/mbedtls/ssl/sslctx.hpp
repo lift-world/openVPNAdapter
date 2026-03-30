@@ -645,6 +645,7 @@ namespace openvpn {
 
       virtual void start_handshake() override
       {
+	// (2) mbedTLS runs the full TLS exchange; WANT_READ/WRITE means more UDP/TCP I/O needed.
 	OPENVPN_LOG("[DEBUG] [TLS] (2) Sending TLS ClientHello");
 	int ret = mbedtls_ssl_handshake(ssl);
 	if (ret == 0)
@@ -732,6 +733,7 @@ namespace openvpn {
 	    if (ver && cs)
 	      {
 		std::string details = ver + std::string("/") + cs;
+		// (3)(4) Called once cipher/version are known — wire steps already happened inside mbedTLS.
 		OPENVPN_LOG("[DEBUG] [TLS] (3)(4) ServerHello + Certificate + KeyExchange processed");
 		OPENVPN_LOG("[DEBUG] [TLS] Negotiated: " << details);
 		return details;
