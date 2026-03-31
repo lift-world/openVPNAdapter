@@ -178,7 +178,7 @@ namespace openvpn {
       {
 	if (!halt)
 	  {
-	    // Session entry: factory creates TCP/UDP client; point (1) logs fire inside transport.
+	    // $$ Session entry: factory creates TCP/UDP client; point (1) logs fire inside transport.
 	    OPENVPN_LOG("[DEBUG] [CONNECT] Session::start() — initializing transport layer");
 	    Base::update_now();
 
@@ -231,7 +231,7 @@ namespace openvpn {
       {
 	if (!halt)
 	  {
-	    // Tear down in UI order: notify app, then tun, then transport.
+	    // $$ Tear down in UI order: notify app, then tun, then transport.
 	    OPENVPN_LOG("[DEBUG] [CONNECT] Session stopping, terminate_callback=" << call_terminate_callback);
 	    halt = true;
 	    housekeeping_timer.cancel();
@@ -279,7 +279,7 @@ namespace openvpn {
       {
 	try {
 #ifdef OPENVPN_DEBUG_CLIPROTO
-	  // (10) Encrypted control/data from server — throttled so release builds don’t melt the log.
+	  // $$ (10) Encrypted control/data from server — throttled so release builds don’t melt the log.
 	  if (++transport_recv_count_ <= 5 || (transport_recv_count_ % 1000) == 0)
 	    OPENVPN_LOG("[DEBUG] [DATA] Transport RECV #" << transport_recv_count_ << " size=" << buf.size());
 #endif
@@ -290,7 +290,7 @@ namespace openvpn {
 	  // update last packet received
 	  stat().update_last_packet_received(now());
 
-	      // First octets from remote — confirms NAT/path allows return traffic.
+	      // $$ First octets from remote — confirms NAT/path allows return traffic.
 	      if (!first_packet_received_)
 		{
 		  OPENVPN_LOG("[DEBUG] [CONNECT] First packet received from server");
@@ -363,7 +363,7 @@ namespace openvpn {
       {
 	try {
 #ifdef OPENVPN_DEBUG_CLIPROTO
-	  // (11) Cleartext IP from kernel — encrypt then send on transport.
+	  // $$ (11) Cleartext IP from kernel — encrypt then send on transport.
 	  if (++tun_recv_count_ <= 5 || (tun_recv_count_ % 1000) == 0)
 	    OPENVPN_LOG("[DEBUG] [DATA] TUN RECV #" << tun_recv_count_ << " size=" << buf.size());
 #endif
@@ -464,7 +464,7 @@ namespace openvpn {
       virtual void transport_connecting()
       {
 	try {
-	  // After (1): start OpenVPN protocol (TLS + control) on this link.
+	  // $$ After (1): start OpenVPN protocol (TLS + control) on this link.
 	  OPENVPN_LOG("[DEBUG] [CONNECT] Transport connected, starting OpenVPN handshake");
 	  OPENVPN_LOG("Connecting to " << server_endpoint_render());
 	  Base::set_protocol(transport->transport_protocol());
@@ -487,7 +487,7 @@ namespace openvpn {
 	  }
 	if (notify_callback)
 	  {
-	    // Transport died mid-session — user-visible failure path.
+	    // $$ Transport died mid-session — user-visible failure path.
 	    OPENVPN_LOG("[ERROR] [CONNECT] Transport error: " << err_text);
 	    stop(true);
 	  }
@@ -504,7 +504,7 @@ namespace openvpn {
 	  }
 	if (notify_callback)
 	  {
-	    // HTTP/SOCKS proxy path failed before tunnel came up.
+	    // $$ HTTP/SOCKS proxy path failed before tunnel came up.
 	    OPENVPN_LOG("[ERROR] [CONNECT] Proxy error: " << err_text);
 	    stop(true);
 	  }
@@ -548,7 +548,7 @@ namespace openvpn {
       // proto base class calls here for control channel network sends
       virtual void control_net_send(const Buffer& net_buf)
       {
-	// (7) TLS-protected control frames on the wire (not tun traffic).
+	// $$ (7) TLS-protected control frames on the wire (not tun traffic).
 	OPENVPN_LOG_CLIPROTO("[DEBUG] [DATA] Control channel SEND size=" << net_buf.size());
 	if (transport->transport_send_const(net_buf))
 	  Base::update_last_sent();
@@ -564,7 +564,7 @@ namespace openvpn {
 
 	if (!received_options.complete() && string::starts_with(msg, "PUSH_REPLY,"))
 	  {
-	    // (8) Server pushes IP/DNS/routes — client builds tun from this.
+	    // $$ (8) Server pushes IP/DNS/routes — client builds tun from this.
 	    OPENVPN_LOG("[DEBUG] [CONNECT] (8) Server Config Push — received PUSH_REPLY");
 	    // parse the received options
 	    received_options.add(OptionList::parse_from_csv_static(msg.substr(11), &pushed_options_limit),
@@ -610,7 +610,7 @@ namespace openvpn {
 		// process "inactive" directive
 		process_inactive(received_options);
 
-		// Data channel keys + tun up; app can treat tunnel as usable.
+		// $$ Data channel keys + tun up; app can treat tunnel as usable.
 		OPENVPN_LOG("[DEBUG] [CONNECT] === Secure VPN Tunnel Ready ===");
 		if (notify_callback)
 		  notify_callback->client_proto_connected();
@@ -647,7 +647,7 @@ namespace openvpn {
 	}
 	else if (string::starts_with(msg, "AUTH_FAILED"))
 	  {
-	    // Server rejected user/pass or token — fix creds or server policy.
+	    // $$ Server rejected user/pass or token — fix creds or server policy.
 	    OPENVPN_LOG("[ERROR] [AUTH] Authentication failed");
 	    std::string reason;
 	    std::string log_reason;
@@ -708,7 +708,7 @@ namespace openvpn {
 	    // be performed before the server will send the PUSH_REPLY message.
 	    if (!auth_pending)
 	      {
-		// Web SSO / MFA — wait for server to finish before PUSH_REPLY.
+		// $$ Web SSO / MFA — wait for server to finish before PUSH_REPLY.
 		OPENVPN_LOG("[DEBUG] [AUTH] Auth pending — out-of-band step required");
 		auth_pending = true;
 		ClientEvent::Base::Ptr ev = new ClientEvent::AuthPending();
@@ -795,7 +795,7 @@ namespace openvpn {
       // proto base class calls here to get auth credentials
       virtual void client_auth(Buffer& buf)
       {
-	// Appended to AUTH after TLS options — omit for relay.
+	// $$ Appended to AUTH after TLS options — omit for relay.
 	if (creds && !Base::conf().relay_mode)
 	  {
 	    OPENVPN_LOG("[DEBUG] [AUTH] Sending credentials: " << creds->auth_info());
@@ -823,7 +823,7 @@ namespace openvpn {
 		  cli_events->add_event(std::move(ev));
 	      sent_push_request = true;
 		}
-	      // Ask server for pushed config once control channel is up.
+	      // $$ Ask server for pushed config once control channel is up.
 	      OPENVPN_LOG("[DEBUG] [AUTH] Sending PUSH_REQUEST to server");
 	      Base::write_control_string(std::string("PUSH_REQUEST"));
 	      Base::flush(true);
@@ -1032,7 +1032,7 @@ namespace openvpn {
       {
 	if (notify_callback)
 	  {
-	    // Unexpected exception on tun/transport path — log then stop cleanly.
+	    // $$ Unexpected exception on tun/transport path — log then stop cleanly.
 	    OPENVPN_LOG("[ERROR] Client exception in " << method_name << ": " << e.what());
 	    stop(true);
 	  }
